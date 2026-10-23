@@ -11,7 +11,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js" defer></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-functions-compat.js" defer></script>
   <script src="firebase-config.js?v=studyspace-2aa7d" defer></script>
-  <script src="admin.js?v=admin-dashboard-1" defer></script>
+  <script src="admin.js?v=admin-dashboard-2" defer></script>
 </head>
 <body class="admin-page">
   <main class="admin-shell">
@@ -50,49 +50,89 @@
       <div class="admin-title-row">
         <div>
           <p class="eyebrow">STUDY SPACE ADMINISTRATION</p>
-          <h1>Login Activity</h1>
+          <h1>Administrator Dashboard</h1>
           <p class="admin-copy" id="admin-account-email"></p>
         </div>
         <button class="button button-secondary" id="admin-signout" type="button">Sign out</button>
       </div>
 
-      <form class="activity-filters" id="activity-filters">
-        <div>
-          <label for="activity-email">Search by student email</label>
-          <input id="activity-email" type="search" maxlength="254" placeholder="Start typing an email">
+      <section class="users-section" aria-labelledby="registered-users-title">
+        <div class="section-title-row">
+          <div>
+            <h2 id="registered-users-title">All Registered Users</h2>
+            <p class="admin-copy">Firebase Authentication accounts, including users who have not logged in through Study Space.</p>
+          </div>
         </div>
-        <div>
-          <label for="activity-start-date">From date</label>
-          <input id="activity-start-date" type="date">
+        <form class="user-search" id="registered-users-search-form">
+          <div>
+            <label for="registered-users-search">Search by email or name</label>
+            <input id="registered-users-search" type="search" maxlength="254" placeholder="Enter an email or display name">
+          </div>
+          <button class="button button-primary" id="registered-users-search-button" type="submit">Search users</button>
+        </form>
+        <p class="admin-message" id="registered-users-message" role="status" aria-live="polite"></p>
+        <div class="activity-table-wrap">
+          <table class="activity-table registered-users-table">
+            <thead>
+              <tr>
+                <th>Email</th>
+                <th>Display name</th>
+                <th>Account created</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="registered-users-rows"></tbody>
+          </table>
         </div>
-        <div>
-          <label for="activity-end-date">To date</label>
-          <input id="activity-end-date" type="date">
+        <div class="activity-pagination">
+          <button class="button button-secondary" id="registered-users-previous" type="button" disabled>Previous</button>
+          <span id="registered-users-page-label">Page 1</span>
+          <button class="button button-secondary" id="registered-users-next" type="button" disabled>Next</button>
         </div>
-        <button class="button button-primary" id="activity-search" type="submit">Search</button>
-        <button class="button button-secondary" id="activity-clear" type="button">Clear filters</button>
-      </form>
-      <p class="admin-message" id="activity-message" role="status" aria-live="polite"></p>
-      <div class="activity-table-wrap">
-        <table class="activity-table">
-          <thead>
-            <tr>
-              <th>Student email</th>
-              <th>Firebase UID</th>
-              <th>Login date and time</th>
-              <th>Provider</th>
-              <th>Student's last login</th>
-            </tr>
-          </thead>
-          <tbody id="activity-rows"></tbody>
-        </table>
-      </div>
-      <div class="activity-pagination">
-        <button class="button button-secondary" id="activity-previous" type="button" disabled>Previous</button>
-        <span id="activity-page-label">Page 1</span>
-        <button class="button button-secondary" id="activity-next" type="button" disabled>Next</button>
-      </div>
-      <p class="admin-footnote">Times are shown in this browser's local timezone. Student login records are private and available only to administrators.</p>
+      </section>
+
+      <section aria-labelledby="login-activity-title">
+        <div class="section-title-row">
+          <h2 id="login-activity-title">Login Activity</h2>
+        </div>
+        <form class="activity-filters" id="activity-filters">
+          <div>
+            <label for="activity-email">Search by student email</label>
+            <input id="activity-email" type="search" maxlength="254" placeholder="Start typing an email">
+          </div>
+          <div>
+            <label for="activity-start-date">From date</label>
+            <input id="activity-start-date" type="date">
+          </div>
+          <div>
+            <label for="activity-end-date">To date</label>
+            <input id="activity-end-date" type="date">
+          </div>
+          <button class="button button-primary" id="activity-search" type="submit">Search</button>
+          <button class="button button-secondary" id="activity-clear" type="button">Clear filters</button>
+        </form>
+        <p class="admin-message" id="activity-message" role="status" aria-live="polite"></p>
+        <div class="activity-table-wrap">
+          <table class="activity-table">
+            <thead>
+              <tr>
+                <th>Student email</th>
+                <th>Firebase UID</th>
+                <th>Login date and time</th>
+                <th>Provider</th>
+                <th>Student's last login</th>
+              </tr>
+            </thead>
+            <tbody id="activity-rows"></tbody>
+          </table>
+        </div>
+        <div class="activity-pagination">
+          <button class="button button-secondary" id="activity-previous" type="button" disabled>Previous</button>
+          <span id="activity-page-label">Page 1</span>
+          <button class="button button-secondary" id="activity-next" type="button" disabled>Next</button>
+        </div>
+        <p class="admin-footnote">Times are shown in this browser's local timezone. Student login records are private and available only to administrators.</p>
+      </section>
     </section>
   </main>
 </body>

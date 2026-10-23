@@ -6,9 +6,14 @@ const activityMessage = document.querySelector("#activity-message");
 const activityRows = document.querySelector("#activity-rows");
 const activityFilters = document.querySelector("#activity-filters");
 const pageTokens = [null];
+const registeredUsersRows = document.querySelector("#registered-users-rows");
+const registeredUsersMessage = document.querySelector("#registered-users-message");
+const registeredUsersPageTokens = [null];
 let currentPage = 0;
+let registeredUsersCurrentPage = 0;
 let auth = null;
 let searchActivity = null;
+let listRegisteredUsers = null;
 let authCheckRunning = false;
 
 function setMessage(element, message, type = "") {
@@ -87,6 +92,66 @@ function renderRecords(records) {
   });
 }
 
+function renderRegisteredUsers(users) {
+  registeredUsersRows.replaceChildren();
+  if (!users.length) {
+    const row = document.createElement("tr");
+    const cell = document.createElement("td");
+    cell.colSpan = 4;
+    cell.className = "empty-row";
+    cell.textContent = "No registered users found for this search.";
+    row.append(cell);
+    registeredUsersRows.append(row);
+    return;
+  }
+
+  users.forEach((user) => {
+    const row = document.createElement("tr");
+    appendCell(row, user.email || "Email unavailable");
+    appendCell(row, user.displayName || "Not provided");
+    appendCell(row, user.creationTime ? formatDate(user.creationTime) : "Unavailable");
+    appendCell(row, user.disabled ? "Disabled" : "Active");
+    registeredUsersRows.append(row);
+  });
+}
+
+async function loadRegisteredUsers(pageIndex = registeredUsersCurrentPage) {
+  if (!listRegisteredUsers) {
+    setMessage(registeredUsersMessage, "The secure user service is not available.", "error");
+    return;
+  }
+
+  registeredUsersCurrentPage = pageIndex;
+  document.querySelector("#registered-users-search-button").disabled = true;
+  document.querySelector("#registered-users-previous").disabled = true;
+  document.querySelector("#registered-users-next").disabled = true;
+  setMessage(registeredUsersMessage, "Loading registered users…");
+
+  try {
+    const result = await listRegisteredUsers({
+      search: document.querySelector("#registered-users-search").value.trim(),
+      pageSize: 50,
+      pageToken: registeredUsersPageTokens[registeredUsersCurrentPage]
+    });
+    const response = result.data;
+    renderRegisteredUsers(response.users);
+    if (response.nextPageToken) {
+      registeredUsersPageTokens[registeredUsersCurrentPage + 1] = response.nextPageToken;
+    } else {
+      registeredUsersPageTokens.length = registeredUsersCurrentPage + 1;
+    }
+    document.querySelector("#registered-users-page-label").textContent = `Page ${registeredUsersCurrentPage + 1}`;
+    document.querySelector("#registered-users-previous").disabled = registeredUsersCurrentPage === 0;
+    document.querySelector("#registered-users-next").disabled = !response.nextPageToken;
+    setMessage(registeredUsersMessage, `${response.users.length} user${response.users.length === 1 ? "" : "s"} on this page.`, "success");
+  } catch (error) {
+    renderRegisteredUsers([]);
+    setMessage(registeredUsersMessage, authErrorMessage(error), "error");
+  } finally {
+    document.querySelector("#registered-users-search-button").disabled = false;
+  }
+}
+
 async function loadActivity(pageIndex = currentPage) {
   if (!searchActivity) {
     setMessage(activityMessage, "The secure activity service is not available.", "error");
@@ -133,14 +198,14 @@ async function verifyAdmin(user) {
   try {
     const token = await user.getIdTokenResult(true);
     if (token.claims.admin !== true) {
-      showDenied(`Signed in as ${user.email || user.uid}, but this account has not been granted the administrator role.`);
+      showDenied(`Signed in as ${user.email || user.uid}, but the refreshed Firebase ID token does not contain admin: true. A project administrator must assign the claim with the secure grant-admin script; signing in again alone will not add it.`);
       return;
     }
     adminLogin.classList.add("hidden");
     adminDenied.classList.add("hidden");
     adminDashboard.classList.remove("hidden");
     document.querySelector("#admin-account-email").textContent = `Administrator: ${user.email || user.uid}`;
-    await loadActivity(0);
+    await Promise.all([loadActivity(0), loadRegisteredUsers(0)]);
   } catch (error) {
     showDenied(`Could not verify administrator access: ${authErrorMessage(error)}`);
   } finally {
@@ -160,6 +225,7 @@ async function initialiseAdmin() {
     auth = app.auth();
     await auth.setPersistence(window.firebase.auth.Auth.Persistence.LOCAL);
     searchActivity = app.functions("us-central1").httpsCallable("searchLoginActivity");
+    listRegisteredUsers = app.functions("us-central1").httpsCallable("listRegisteredUsers");
     auth.onAuthStateChanged((user) => {
       if (user) {
         verifyAdmin(user);
@@ -237,6 +303,22 @@ document.querySelector("#activity-previous").addEventListener("click", () => {
 
 document.querySelector("#activity-next").addEventListener("click", () => {
   if (pageTokens[currentPage + 1]) loadActivity(currentPage + 1);
+});
+
+document.querySelector("#registered-users-search-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  registeredUsersPageTokens.length = 1;
+  await loadRegisteredUsers(0);
+});
+
+document.querySelector("#registered-users-previous").addEventListener("click", () => {
+  if (registeredUsersCurrentPage > 0) loadRegisteredUsers(registeredUsersCurrentPage - 1);
+});
+
+document.querySelector("#registered-users-next").addEventListener("click", () => {
+  if (registeredUsersPageTokens[registeredUsersCurrentPage + 1]) {
+    loadRegisteredUsers(registeredUsersCurrentPage + 1);
+  }
 });
 
 document.querySelector("#admin-signout").addEventListener("click", async () => {
