@@ -1930,6 +1930,8 @@ function setAuthMode(mode) {
   authMode = mode;
   const emailLabel = document.querySelector('label[for="auth-email"]');
   const emailInput = document.querySelector("#auth-email");
+  const usernameLabel = document.querySelector("#auth-username-label");
+  const usernameInput = document.querySelector("#auth-username");
   const passwordLabel = document.querySelector("#auth-password-label");
   const passwordInput = document.querySelector("#auth-password");
   const authSwitch = document.querySelector("#auth-switch");
@@ -1950,8 +1952,13 @@ function setAuthMode(mode) {
     ? "Choose a fresh password for your account."
     : isRecoveryRequest
       ? "We’ll email you a link to securely reset your password."
-      : "Use your email and password to open your account.";
+      : signingUp
+        ? "Choose a username to personalize your study space."
+        : "Use your email and password to open your account.";
 
+  usernameLabel.classList.toggle("hidden", !signingUp);
+  usernameInput.classList.toggle("hidden", !signingUp);
+  usernameInput.required = signingUp;
   emailLabel.classList.toggle("hidden", isPasswordReset);
   emailInput.classList.toggle("hidden", isPasswordReset);
   emailInput.required = !isPasswordReset;
@@ -1990,7 +1997,8 @@ function showApp(user, preview = false) {
   authScreen.classList.add("hidden");
   appShell.classList.remove("hidden");
   document.querySelector("#app-message").classList.add("hidden");
-  document.querySelector("#profile-name").textContent = user?.email || (preview ? "Local preview" : "My study space");
+  const username = typeof user?.user_metadata?.username === "string" ? user.user_metadata.username.trim() : "";
+  document.querySelector("#profile-name").textContent = username || user?.email || (preview ? "Local preview" : "My study space");
   document.querySelector("#profile-status").textContent = preview ? "Progress saved on this device" : "Signed in · progress saved on this device";
   document.querySelector("#sign-out").textContent = preview ? "Exit preview" : "Sign out";
   renderDashboard();
@@ -2064,8 +2072,14 @@ authForm.addEventListener("submit", async (event) => {
   }
 
   const formData = new FormData(authForm);
+  const username = String(formData.get("username") || "").trim();
   const email = String(formData.get("email")).trim();
   const password = String(formData.get("password"));
+  if (authMode === "signup" && (username.length < 2 || username.length > 30)) {
+    setAuthMessage("Your username must be between 2 and 30 characters.", "error");
+    document.querySelector("#auth-username").focus();
+    return;
+  }
   authSubmit.disabled = true;
   setAuthMessage(
     authMode === "signup" ? "Creating your account…" :
@@ -2078,7 +2092,10 @@ authForm.addEventListener("submit", async (event) => {
       result = await supabaseClient.auth.signUp({
         email,
         password,
-        options: { emailRedirectTo: new URL("./", window.location.href).toString() }
+        options: {
+          emailRedirectTo: new URL("./", window.location.href).toString(),
+          data: { username }
+        }
       });
     } else if (authMode === "recovery-request") {
       result = await supabaseClient.auth.resetPasswordForEmail(email, {

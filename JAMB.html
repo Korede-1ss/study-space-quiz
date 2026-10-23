@@ -31,6 +31,8 @@
       <h2 id="auth-title">Sign in to start practising</h2>
       <p class="auth-panel-copy">Use your email and password to open your account.</p>
       <form id="auth-form">
+        <label id="auth-username-label" class="hidden" for="auth-username">Username</label>
+        <input id="auth-username" name="username" type="text" autocomplete="nickname" minlength="2" maxlength="30" class="hidden">
         <label for="auth-email">Email address</label>
         <input id="auth-email" name="email" type="email" autocomplete="email" required>
         <label id="auth-password-label" for="auth-password">Password</label>
