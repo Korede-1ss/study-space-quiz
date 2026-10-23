@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0b0b0e">
+  <title>Study Space | Practice smarter</title>
+  <link rel="stylesheet" href="JAMB.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+  <script src="supabase-config.js" defer></script>
+  <script src="JAMB.js" defer></script>
+</head>
+<body>
+  <main class="auth-screen" id="auth-screen">
+    <section class="auth-story">
+      <a class="brand" href="#" aria-label="Study Space home">
+        <span class="brand-mark">S</span>
+        <span>STUDY<span class="brand-light">SPACE</span></span>
+      </a>
+      <p class="eyebrow">YOUR UTME STUDY SPACE</p>
+      <h1>Small steps.<br><span class="accent">Stronger results.</span></h1>
+      <p class="auth-intro">Practise Mathematics, Physics, English and Chemistry one syllabus topic at a time.</p>
+      <div class="auth-benefits">
+        <p><span>01</span><strong>Learn by topic</strong><br>Focus on the syllabus areas you want to improve.</p>
+        <p><span>02</span><strong>Understand each answer</strong><br>Review explanations after every question.</p>
+        <p><span>03</span><strong>See your progress</strong><br>Keep track of practice and accuracy on this device.</p>
+      </div>
+    </section>
+    <section class="auth-panel" aria-labelledby="auth-title">
+      <p class="eyebrow">FREE · CREATE YOUR STUDY SPACE</p>
+      <h2 id="auth-title">Sign in to start practising</h2>
+      <p class="auth-panel-copy">Use your email and password to open your account.</p>
+      <form id="auth-form">
+        <label for="auth-email">Email address</label>
+        <input id="auth-email" name="email" type="email" autocomplete="email" required>
+        <label id="auth-password-label" for="auth-password">Password</label>
+        <input id="auth-password" name="password" type="password" autocomplete="current-password" minlength="6" required>
+        <button class="button button-primary" id="auth-submit" type="submit">Sign in <span aria-hidden="true">→</span></button>
+      </form>
+      <button class="auth-inline hidden" id="forgot-password" type="button">Forgot password?</button>
+      <p class="auth-switch" id="auth-switch"><span id="auth-switch-copy">New here?</span> <button id="auth-mode-toggle" type="button">Create an account</button></p>
+      <button class="auth-inline hidden" id="auth-back-to-signin" type="button">Back to sign in</button>
+      <p class="auth-message" id="auth-message" role="status" aria-live="polite"></p>
+      <div class="auth-divider"><span>OR</span></div>
+      <button class="button button-secondary preview-button" id="preview-app" type="button">Explore in local preview</button>
+      <p class="auth-note" id="auth-note">Preview mode saves progress only in this browser.</p>
+    </section>
+  </main>
+
+  <div class="app-shell hidden" id="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="#" aria-label="Study Space home">
+        <span class="brand-mark">S</span>
+        <span>STUDY<span class="brand-light">SPACE</span></span>
+      </a>
+
+      <nav class="main-nav" aria-label="Main navigation">
+        <button class="nav-link active" data-page="home"><span class="nav-icon">⌂</span>Home</button>
+        <button class="nav-link" data-page="learn"><span class="nav-icon">▤</span>Learn</button>
+        <button class="nav-link" data-page="progress"><span class="nav-icon">▥</span>Progress</button>
+      </nav>
+
+      <div class="sidebar-note">
+        <span class="note-spark">✦</span>
+        <p>Small steps every day add up to big results.</p>
+      </div>
+      <div class="profile">
+        <div class="avatar">S</div>
+        <div class="profile-copy"><strong id="profile-name">My study space</strong><span id="profile-status">Keep your streak going</span></div>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <div class="breadcrumb">YOUR STUDY DASHBOARD <span>/</span> <b id="breadcrumb-page">HOME</b></div>
+        <div class="topbar-right"><span class="today-label" id="today-label"></span><span class="live-dot"></span><button class="sign-out-button" id="sign-out" type="button">Sign out</button></div>
+      </header>
+      <p class="app-message hidden" id="app-message" role="status" aria-live="polite"></p>
+
+      <section class="dashboard page-section" id="dashboard-page">
+        <div class="welcome-row">
+          <div>
+            <p class="eyebrow">A LITTLE PRACTICE GOES A LONG WAY</p>
+            <h1>Ready to learn<span class="accent">?</span></h1>
+            <p class="subtitle">Choose a subject and take your next step.</p>
+          </div>
+          <div class="streak-card"><span class="streak-icon">✦</span><div><strong id="streak-count">0 day streak</strong><span>You're building a great habit</span></div></div>
+        </div>
+
+        <div class="stats-grid">
+          <article class="stat-card"><span class="stat-label">QUESTIONS ANSWERED</span><strong id="answered-count">0</strong><span class="stat-caption">Keep practising to improve</span></article>
+          <article class="stat-card"><span class="stat-label">CORRECT ANSWERS</span><strong id="correct-count">0</strong><span class="stat-caption">Every answer teaches you something</span></article>
+          <article class="stat-card"><span class="stat-label">YOUR ACCURACY</span><strong id="accuracy-count">0<span class="small-percent">%</span></strong><span class="stat-caption">Your progress so far</span></article>
+        </div>
+
+        <section class="subjects-section" id="subjects-section">
+          <div class="section-heading">
+            <div><p class="eyebrow">PICK UP WHERE YOU LIKE</p><h2>Your subjects</h2></div>
+            <span class="section-hint">Four subjects. One step at a time.</span>
+          </div>
+          <div class="subject-grid" id="subject-grid"></div>
+        </section>
+
+        <section class="practice-banner">
+          <div class="banner-decoration">✳</div>
+          <div class="banner-content">
+            <p class="eyebrow">YOUR DAILY PRACTICE</p>
+            <h2>Try a mixed-subject quiz.</h2>
+            <p>Get a short practice set drawn from Mathematics, Physics, English and Chemistry.</p>
+          </div>
+          <button class="button button-primary" id="start-daily">Start mixed quiz <span aria-hidden="true">→</span></button>
+        </section>
+        <p class="content-footnote">Your answers are saved on this device, so you can keep track of your practice.</p>
+      </section>
+
+      <section class="learn-page page-section hidden" id="learn-page">
+        <div class="page-heading">
+          <p class="eyebrow">YOUR UTME SYLLABUS</p>
+          <h1>Your course</h1>
+          <p>Choose a subject, then open an available topic to practise.</p>
+        </div>
+        <div class="course-grid" id="course-grid"></div>
+      </section>
+
+      <section class="progress-page page-section hidden" id="progress-page">
+        <div class="page-heading">
+          <p class="eyebrow">YOUR PRACTICE AT A GLANCE</p>
+          <h1>Progress</h1>
+          <p>These numbers come from your answers saved in this browser.</p>
+        </div>
+        <div class="progress-summary" id="progress-summary"></div>
+        <section class="readiness-section">
+          <div class="section-heading">
+            <div><p class="eyebrow">FOUR SUBJECTS</p><h2>Practice overview</h2></div>
+            <span class="section-hint">Topic coverage and accuracy</span>
+          </div>
+          <div class="readiness-list" id="readiness-list"></div>
+        </section>
+        <p class="content-footnote">Progress is currently stored on this device; it does not sync between devices yet.</p>
+      </section>
+
+      <section class="setup-page page-section hidden" id="subject-setup-page">
+        <button class="back-button" id="back-to-subjects"><span aria-hidden="true">←</span> Back to subjects</button>
+        <div class="setup-heading">
+          <p class="eyebrow">MAKE IT YOUR OWN</p>
+          <h1 id="setup-title">Mathematics practice</h1>
+          <p id="setup-description"></p>
+        </div>
+        <div class="practice-options">
+          <article class="practice-option">
+            <span class="option-number">01</span>
+            <p class="eyebrow">FOCUSED PRACTICE</p>
+            <h2>Choose a topic</h2>
+            <p>Practise questions from one syllabus topic and review each explanation.</p>
+            <label for="topic-select">Syllabus topic</label>
+            <select id="topic-select"></select>
+            <p class="topic-availability" id="topic-availability"></p>
+            <button class="button button-primary" id="start-topic" disabled>Practice this topic <span aria-hidden="true">→</span></button>
+          </article>
+          <article class="practice-option mock-option">
+            <span class="option-number">02</span>
+            <p class="eyebrow">MIXED TOPICS</p>
+            <h2>Short subject mock</h2>
+            <p>Try a shuffled 10-question set drawn from the available questions for this subject.</p>
+            <span class="mock-disclaimer">Practice set — not a complete official exam paper.</span>
+            <button class="button button-secondary" id="start-subject-mock">Start subject mock <span aria-hidden="true">→</span></button>
+          </article>
+        </div>
+        <p class="coverage-note" id="coverage-note"></p>
+      </section>
+
+      <section class="quiz-page page-section hidden" id="quiz-page" aria-live="polite">
+        <div class="quiz-top">
+          <button class="back-button" id="back-to-dashboard"><span aria-hidden="true">←</span> Back to subjects</button>
+          <span class="quiz-subject-label" id="quiz-subject-label"></span>
+        </div>
+        <div class="quiz-layout">
+          <div class="question-column">
+            <div class="quiz-heading">
+              <div><p class="eyebrow">PRACTICE SESSION</p><h1 id="quiz-title">Mathematics</h1></div>
+              <span class="question-count" id="question-count"></span>
+            </div>
+            <div class="progress-track"><span id="question-progress"></span></div>
+            <article class="question-card">
+              <div class="question-meta"><span id="question-topic"></span><span class="pick-one">CHOOSE ONE ANSWER</span></div>
+              <p class="passage-copy hidden" id="question-passage"></p>
+              <h2 id="question-text"></h2>
+              <div class="answer-list" id="answer-list"></div>
+              <div class="answer-feedback hidden" id="answer-feedback" role="status"></div>
+              <div class="question-actions">
+                <span class="keyboard-hint">Take your time — there's no timer.</span>
+                <button class="button button-primary hidden" id="next-question">Next question <span aria-hidden="true">→</span></button>
+              </div>
+            </article>
+          </div>
+          <aside class="quiz-aside">
+            <div class="aside-card session-card">
+              <p class="eyebrow">THIS SESSION</p>
+              <div class="session-score"><strong id="session-correct">0</strong><span>correct so far</span></div>
+              <div class="mini-progress"><span id="session-progress"></span></div>
+              <p class="aside-caption" id="session-caption">Every question is a chance to learn.</p>
+            </div>
+            <div class="aside-card tip-card"><span class="tip-icon">✦</span><h3>Study tip</h3><p>Read each question carefully. After you answer, take a moment to understand why.</p></div>
+          </aside>
+        </div>
+      </section>
+
+      <section class="results-page page-section hidden" id="results-page" aria-live="polite">
+        <div class="results-card">
+          <div class="results-icon" id="results-icon">✦</div>
+          <p class="eyebrow">SESSION COMPLETE</p>
+          <h1 id="results-title">Well done!</h1>
+          <p class="results-subtitle" id="results-subtitle"></p>
+          <div class="results-score"><strong id="final-score"></strong><span id="final-score-label"></span></div>
+          <div class="results-actions">
+            <button class="button button-primary" id="try-again">Try this subject again <span aria-hidden="true">→</span></button>
+            <button class="button button-secondary" id="see-subjects">Choose another subject</button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>
