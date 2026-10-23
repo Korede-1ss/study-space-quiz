@@ -1511,6 +1511,7 @@ subjects.forEach((subject) => {
 });
 
 const storageKey = "study-space-progress-v1";
+const previewUsernameStorageKey = "study-space-preview-username-v1";
 const emptyProgress = () => ({
   answered: 0,
   correct: 0,
@@ -1992,13 +1993,13 @@ function showAuthScreen(message = "") {
   if (message) setAuthMessage(message, "error");
 }
 
-function showApp(user, preview = false) {
+function showApp(user, preview = false, previewUsername = "") {
   previewMode = preview;
   authScreen.classList.add("hidden");
   appShell.classList.remove("hidden");
   document.querySelector("#app-message").classList.add("hidden");
   const username = typeof user?.user_metadata?.username === "string" ? user.user_metadata.username.trim() : "";
-  document.querySelector("#profile-name").textContent = username || user?.email || (preview ? "Local preview" : "My study space");
+  document.querySelector("#profile-name").textContent = username || user?.email || previewUsername || (preview ? "Local preview" : "My study space");
   document.querySelector("#profile-status").textContent = preview ? "Progress saved on this device" : "Signed in · progress saved on this device";
   document.querySelector("#sign-out").textContent = preview ? "Exit preview" : "Sign out";
   renderDashboard();
@@ -2014,7 +2015,7 @@ function hasSupabaseConfig() {
 async function initialiseAuth() {
   if (!hasSupabaseConfig()) {
     setAuthMessage("Account sign-in is not connected yet. Add your Supabase project URL and anon key to supabase-config.js.", "error");
-    document.querySelector("#auth-note").textContent = "Preview mode saves progress only in this browser. Add your Supabase project URL and public anon key to supabase-config.js to enable account sign-in.";
+    document.querySelector("#auth-note").textContent = "Preview usernames and progress are saved only in this browser. Add your Supabase project URL and public anon key to supabase-config.js to enable account sign-in.";
     return;
   }
   if (!window.supabase?.createClient) {
@@ -2023,7 +2024,7 @@ async function initialiseAuth() {
   }
 
   supabaseClient = window.supabase.createClient(window.STUDYSPACE_SUPABASE.url, window.STUDYSPACE_SUPABASE.anonKey);
-  document.querySelector("#auth-note").textContent = "Preview mode saves progress only in this browser. Account sign-in uses Supabase; quiz progress is currently stored on this device.";
+  document.querySelector("#auth-note").textContent = "Preview usernames and progress are saved only in this browser. Account sign-in uses Supabase; quiz progress is currently stored on this device.";
   supabaseClient.auth.onAuthStateChange((event, session) => {
     if (event === "PASSWORD_RECOVERY") {
       showPasswordReset();
@@ -2128,7 +2129,40 @@ authForm.addEventListener("submit", async (event) => {
   }
 });
 
-document.querySelector("#preview-app").addEventListener("click", () => showApp(null, true));
+document.querySelector("#preview-app").addEventListener("click", () => {
+  const previewUsernameInput = document.querySelector("#preview-username");
+  const previewUsernameLabel = document.querySelector("#preview-username-label");
+  const previewButton = document.querySelector("#preview-app");
+  if (previewUsernameInput.classList.contains("hidden")) {
+    try {
+      previewUsernameInput.value = localStorage.getItem(previewUsernameStorageKey) || "";
+    } catch (error) {
+      console.warn("Could not load the local preview username from this browser.", error);
+    }
+    previewUsernameLabel.classList.remove("hidden");
+    previewUsernameInput.classList.remove("hidden");
+    previewUsernameInput.focus();
+    previewButton.textContent = "Start local preview";
+    return;
+  }
+
+  const username = previewUsernameInput.value.trim();
+  if (username && (username.length < 2 || username.length > 30)) {
+    setAuthMessage("Your username must be between 2 and 30 characters, or leave it blank.", "error");
+    previewUsernameInput.focus();
+    return;
+  }
+  try {
+    if (username) {
+      localStorage.setItem(previewUsernameStorageKey, username);
+    } else {
+      localStorage.removeItem(previewUsernameStorageKey);
+    }
+  } catch (error) {
+    console.warn("Could not save the local preview username in this browser.", error);
+  }
+  showApp(null, true, username);
+});
 document.querySelector("#sign-out").addEventListener("click", async () => {
   if (previewMode) {
     showAuthScreen();

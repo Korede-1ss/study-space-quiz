@@ -45,7 +45,9 @@
       <p class="auth-message" id="auth-message" role="status" aria-live="polite"></p>
       <div class="auth-divider"><span>OR</span></div>
       <button class="button button-secondary preview-button" id="preview-app" type="button">Explore in local preview</button>
-      <p class="auth-note" id="auth-note">Preview mode saves progress only in this browser.</p>
+      <label id="preview-username-label" class="hidden" for="preview-username">Username for local preview (optional)</label>
+      <input id="preview-username" type="text" autocomplete="nickname" minlength="2" maxlength="30" placeholder="Enter a username" class="hidden">
+      <p class="auth-note" id="auth-note">Preview usernames and progress are saved only in this browser.</p>
     </section>
   </main>
 
