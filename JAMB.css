@@ -72,6 +72,9 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--orange); outlin
 .auth-message.success { color: var(--green); }
 .auth-divider { display: flex; align-items: center; gap: 12px; margin: 8px 0 13px; color: var(--faint); font-size: 9px; }
 .auth-divider::before, .auth-divider::after { height: 1px; flex: 1; background: var(--line); content: ""; }
+.google-button, .preview-button { width: 100%; min-height: 43px; }
+.google-button { display: flex; justify-content: center; align-items: center; gap: 10px; }
+.google-mark { color: #4285f4; font-size: 17px; font-weight: 800; }
 .preview-button { width: 100%; min-height: 43px; }
 .auth-note { margin: 13px 0 0; color: var(--faint); font-size: 10px; line-height: 1.6; }
 .auth-note code { color: #c6c3cd; }

@@ -1564,9 +1564,9 @@ const authForm = document.querySelector("#auth-form");
 const authMessage = document.querySelector("#auth-message");
 const authSubmit = document.querySelector("#auth-submit");
 let authMode = "signin";
-let supabaseClient = null;
+let firebaseAuth = null;
 let previewMode = false;
-let passwordRecoveryActive = false;
+let authActionInProgress = false;
 
 function shuffle(items) {
   const shuffled = [...items];
@@ -1939,57 +1939,45 @@ function setAuthMode(mode) {
   const forgotPassword = document.querySelector("#forgot-password");
   const backToSignin = document.querySelector("#auth-back-to-signin");
   const isRecoveryRequest = mode === "recovery-request";
-  const isPasswordReset = mode === "reset-password";
   const signingUp = mode === "signup";
 
-  document.querySelector("#auth-title").textContent = isPasswordReset
-    ? "Choose a new password"
-    : isRecoveryRequest
-      ? "Reset your password"
-      : signingUp
-        ? "Create your account"
-        : "Sign in to start practising";
-  document.querySelector(".auth-panel-copy").textContent = isPasswordReset
-    ? "Choose a fresh password for your account."
-    : isRecoveryRequest
-      ? "We’ll email you a link to securely reset your password."
-      : signingUp
-        ? "Choose a username to personalize your study space."
-        : "Use your email and password to open your account.";
+  document.querySelector("#auth-title").textContent = isRecoveryRequest
+    ? "Reset your password"
+    : signingUp
+      ? "Create your account"
+      : "Sign in to start practising";
+  document.querySelector(".auth-panel-copy").textContent = isRecoveryRequest
+    ? "We’ll email you a link to securely reset your password."
+    : signingUp
+      ? "Choose a username to personalize your study space."
+      : "Use your email and password to open your account.";
 
   usernameLabel.classList.toggle("hidden", !signingUp);
   usernameInput.classList.toggle("hidden", !signingUp);
   usernameInput.required = signingUp;
-  emailLabel.classList.toggle("hidden", isPasswordReset);
-  emailInput.classList.toggle("hidden", isPasswordReset);
-  emailInput.required = !isPasswordReset;
+  emailLabel.classList.remove("hidden");
+  emailInput.classList.remove("hidden");
+  emailInput.required = true;
   passwordLabel.classList.toggle("hidden", isRecoveryRequest);
   passwordInput.classList.toggle("hidden", isRecoveryRequest);
   passwordInput.required = !isRecoveryRequest;
-  passwordLabel.textContent = isPasswordReset ? "New password" : "Password";
-  passwordInput.minLength = isPasswordReset ? 8 : 6;
-  passwordInput.autocomplete = signingUp || isPasswordReset ? "new-password" : "current-password";
+  passwordLabel.textContent = "Password";
+  passwordInput.minLength = 6;
+  passwordInput.autocomplete = signingUp ? "new-password" : "current-password";
   passwordInput.value = "";
 
-  authSubmit.innerHTML = `${isPasswordReset ? "Update password" : isRecoveryRequest ? "Send reset link" : signingUp ? "Create account" : "Sign in"} <span aria-hidden="true">→</span>`;
-  authSwitch.classList.toggle("hidden", isRecoveryRequest || isPasswordReset);
+  authSubmit.innerHTML = `${isRecoveryRequest ? "Send reset link" : signingUp ? "Create account" : "Sign in"} <span aria-hidden="true">→</span>`;
+  authSwitch.classList.toggle("hidden", isRecoveryRequest);
   forgotPassword.classList.toggle("hidden", mode !== "signin");
-  backToSignin.classList.toggle("hidden", !isRecoveryRequest && !isPasswordReset);
+  backToSignin.classList.toggle("hidden", !isRecoveryRequest);
   setAuthMessage("");
-}
-
-function showPasswordReset() {
-  passwordRecoveryActive = true;
-  authScreen.classList.remove("hidden");
-  appShell.classList.add("hidden");
-  setAuthMode("reset-password");
 }
 
 function showAuthScreen(message = "") {
   previewMode = false;
   appShell.classList.add("hidden");
   authScreen.classList.remove("hidden");
-  if (authMode === "recovery-request" || authMode === "reset-password") setAuthMode("signin");
+  if (authMode === "recovery-request") setAuthMode("signin");
   if (message) setAuthMessage(message, "error");
 }
 
@@ -1998,7 +1986,7 @@ function showApp(user, preview = false, previewUsername = "") {
   authScreen.classList.add("hidden");
   appShell.classList.remove("hidden");
   document.querySelector("#app-message").classList.add("hidden");
-  const username = typeof user?.user_metadata?.username === "string" ? user.user_metadata.username.trim() : "";
+  const username = typeof user?.displayName === "string" ? user.displayName.trim() : "";
   document.querySelector("#profile-name").textContent = username || user?.email || previewUsername || (preview ? "Local preview" : "My study space");
   document.querySelector("#profile-status").textContent = preview ? "Progress saved on this device" : "Signed in · progress saved on this device";
   document.querySelector("#sign-out").textContent = preview ? "Exit preview" : "Sign out";
@@ -2007,44 +1995,76 @@ function showApp(user, preview = false, previewUsername = "") {
   renderProgressPage();
 }
 
-function hasSupabaseConfig() {
-  const config = window.STUDYSPACE_SUPABASE;
-  return Boolean(config?.url && config?.anonKey && config.url.startsWith("https://") && !config.url.includes("YOUR_") && !config.anonKey.includes("YOUR_"));
+function getFirebaseContinueUrl() {
+  return new URL("./", window.location.href).toString();
+}
+
+function getAuthErrorMessage(error) {
+  const messages = {
+    "auth/account-exists-with-different-credential": "An account already exists with this email using a different sign-in method. Sign in with that method first.",
+    "auth/email-already-in-use": "An account already exists with this email. Sign in instead, or use password reset if needed.",
+    "auth/invalid-email": "Enter a valid email address.",
+    "auth/invalid-credential": "That email and password combination was not recognized. Check them and try again.",
+    "auth/invalid-login-credentials": "That email and password combination was not recognized. Check them and try again.",
+    "auth/user-not-found": "That email and password combination was not recognized. Check them and try again.",
+    "auth/wrong-password": "That email and password combination was not recognized. Check them and try again.",
+    "auth/user-disabled": "This account has been disabled. Contact the site administrator for help.",
+    "auth/weak-password": "Choose a stronger password with at least 6 characters.",
+    "auth/too-many-requests": "There have been too many attempts. Please wait a while and try again.",
+    "auth/network-request-failed": "Could not reach Firebase. Check your internet connection and try again.",
+    "auth/popup-closed-by-user": "The Google sign-in window was closed before sign-in finished.",
+    "auth/popup-blocked": "The Google sign-in popup was blocked. Trying the redirect sign-in instead.",
+    "auth/unauthorized-domain": "This website address is not authorized in Firebase. Add korede-1ss.github.io under Authentication → Settings → Authorized domains.",
+    "auth/operation-not-allowed": "This sign-in method is not enabled in Firebase Authentication settings.",
+    "auth/invalid-api-key": "Firebase rejected the project API key. Check the Firebase web app configuration.",
+    "auth/configuration-not-found": "Firebase Authentication is not configured for this project. Check the Firebase Console settings."
+  };
+  return messages[error?.code] || error?.message || "Authentication failed. Please try again.";
+}
+
+function setAuthBusy(isBusy) {
+  authSubmit.disabled = isBusy;
+  document.querySelector("#google-sign-in").disabled = isBusy;
 }
 
 async function initialiseAuth() {
-  if (!hasSupabaseConfig()) {
-    setAuthMessage("Account sign-in is not connected yet. Add your Supabase project URL and anon key to supabase-config.js.", "error");
-    document.querySelector("#auth-note").textContent = "Preview usernames and progress are saved only in this browser. Add your Supabase project URL and public anon key to supabase-config.js to enable account sign-in.";
+  const config = window.STUDYSPACE_FIREBASE;
+  if (!config?.apiKey || !config?.authDomain || !config?.projectId || !config?.appId) {
+    setAuthMessage("Firebase is not configured. Check firebase-config.js.", "error");
+    document.querySelector("#auth-note").textContent = "Preview usernames and progress are saved only in this browser. Add the Firebase web app configuration to firebase-config.js to enable account sign-in.";
     return;
   }
-  if (!window.supabase?.createClient) {
-    setAuthMessage("Could not load the sign-in service. Check your internet connection, then reload this page.", "error");
+  if (!window.firebase?.initializeApp || !window.firebase?.auth) {
+    setAuthMessage("Could not load Firebase Authentication. Check your internet connection, then reload this page.", "error");
     return;
   }
 
-  supabaseClient = window.supabase.createClient(window.STUDYSPACE_SUPABASE.url, window.STUDYSPACE_SUPABASE.anonKey);
-  document.querySelector("#auth-note").textContent = "Preview usernames and progress are saved only in this browser. Account sign-in uses Supabase; quiz progress is currently stored on this device.";
-  supabaseClient.auth.onAuthStateChange((event, session) => {
-    if (event === "PASSWORD_RECOVERY") {
-      showPasswordReset();
-    } else if (session && !passwordRecoveryActive) {
-      showApp(session.user);
-    } else if (event === "SIGNED_OUT") {
-      passwordRecoveryActive = false;
-      showAuthScreen();
-    }
-  });
+  try {
+    const app = window.firebase.apps.length ? window.firebase.app() : window.firebase.initializeApp(config);
+    firebaseAuth = app.auth();
+    await firebaseAuth.setPersistence(window.firebase.auth.Auth.Persistence.LOCAL);
+    document.querySelector("#auth-note").textContent = "Preview usernames and progress are saved only in this browser. Account sign-in uses Firebase; quiz progress is currently stored on this device.";
+    firebaseAuth.onAuthStateChanged((user) => {
+      if (authActionInProgress) return;
+      if (!user) {
+        if (!previewMode) showAuthScreen();
+        return;
+      }
+      const isPasswordAccount = user.providerData.some((provider) => provider.providerId === "password");
+      if (isPasswordAccount && !user.emailVerified) {
+        showAuthScreen("Please verify your email address using the link we sent you, then sign in.");
+        return;
+      }
+      showApp(user);
+    }, (error) => {
+      showAuthScreen(`Could not check your sign-in: ${getAuthErrorMessage(error)}`);
+    });
 
-  const { data, error } = await supabaseClient.auth.getSession();
-  if (error) {
-    showAuthScreen(`Could not check your sign-in: ${error.message}`);
-    return;
-  }
-  if (data.session) {
-    if (!passwordRecoveryActive) showApp(data.session.user);
-  } else {
-    showAuthScreen();
+    firebaseAuth.getRedirectResult().catch((error) => {
+      if (error.code !== "auth/no-auth-event") setAuthMessage(getAuthErrorMessage(error), "error");
+    });
+  } catch (error) {
+    showAuthScreen(`Could not initialize Firebase Authentication: ${getAuthErrorMessage(error)}`);
   }
 }
 
@@ -2057,18 +2077,13 @@ document.querySelector("#auth-mode-toggle").addEventListener("click", () => {
 
 document.querySelector("#forgot-password").addEventListener("click", () => setAuthMode("recovery-request"));
 document.querySelector("#auth-back-to-signin").addEventListener("click", () => {
-  passwordRecoveryActive = false;
   setAuthMode("signin");
 });
 
 authForm.addEventListener("submit", async (event) => {
   event.preventDefault();
-  if (!hasSupabaseConfig()) {
-    setAuthMessage("Connect your Supabase project in supabase-config.js before creating an account or signing in.", "error");
-    return;
-  }
-  if (!supabaseClient) {
-    setAuthMessage("The sign-in service is not ready. Reload the page and try again.", "error");
+  if (!firebaseAuth) {
+    setAuthMessage("Firebase Authentication is not ready. Reload the page and try again.", "error");
     return;
   }
 
@@ -2081,51 +2096,77 @@ authForm.addEventListener("submit", async (event) => {
     document.querySelector("#auth-username").focus();
     return;
   }
-  authSubmit.disabled = true;
+  authActionInProgress = true;
+  setAuthBusy(true);
   setAuthMessage(
     authMode === "signup" ? "Creating your account…" :
-      authMode === "recovery-request" ? "Requesting a password reset…" :
-        authMode === "reset-password" ? "Updating your password…" : "Signing in…"
+      authMode === "recovery-request" ? "Requesting a password reset…" : "Signing in…"
   );
   try {
-    let result;
     if (authMode === "signup") {
-      result = await supabaseClient.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: new URL("./", window.location.href).toString(),
-          data: { username }
-        }
-      });
+      const credential = await firebaseAuth.createUserWithEmailAndPassword(email, password);
+      await credential.user.updateProfile({ displayName: username });
+      try {
+        await credential.user.sendEmailVerification({ url: getFirebaseContinueUrl() });
+      } finally {
+        await firebaseAuth.signOut();
+      }
+      document.querySelector("#auth-switch-copy").textContent = "New here?";
+      document.querySelector("#auth-mode-toggle").textContent = "Create an account";
+      setAuthMode("signin");
+      setAuthMessage("Account created. Check your email to verify your address, then sign in.", "success");
     } else if (authMode === "recovery-request") {
-      result = await supabaseClient.auth.resetPasswordForEmail(email, {
-        redirectTo: new URL("./", window.location.href).toString()
-      });
-    } else if (authMode === "reset-password") {
-      result = await supabaseClient.auth.updateUser({ password });
-    } else {
-      result = await supabaseClient.auth.signInWithPassword({ email, password });
-    }
-    if (result.error) throw result.error;
-    if (authMode === "recovery-request") {
+      await firebaseAuth.sendPasswordResetEmail(email, { url: getFirebaseContinueUrl() });
       setAuthMessage("If an account exists for this email, a password reset link will arrive shortly.", "success");
-    } else if (authMode === "reset-password") {
-      passwordRecoveryActive = false;
-      showApp(result.data.user);
-      const appMessage = document.querySelector("#app-message");
-      appMessage.textContent = "Your password was updated.";
-      appMessage.className = "app-message success";
-      appMessage.classList.remove("hidden");
-    } else if (result.data.session) {
-      showApp(result.data.session.user);
     } else {
-      setAuthMessage("Account created. Check your email to confirm it, then sign in.", "success");
+      const credential = await firebaseAuth.signInWithEmailAndPassword(email, password);
+      if (!credential.user.emailVerified) {
+        try {
+          await credential.user.sendEmailVerification({ url: getFirebaseContinueUrl() });
+        } finally {
+          await firebaseAuth.signOut();
+        }
+        setAuthMessage("Please verify your email before signing in. We sent another verification link.", "success");
+      } else {
+        showApp(credential.user);
+      }
     }
   } catch (error) {
-    setAuthMessage(error.message || "Sign-in failed. Please try again.", "error");
+    setAuthMessage(getAuthErrorMessage(error), "error");
   } finally {
-    authSubmit.disabled = false;
+    authActionInProgress = false;
+    setAuthBusy(false);
+  }
+});
+
+document.querySelector("#google-sign-in").addEventListener("click", async () => {
+  if (!firebaseAuth) {
+    setAuthMessage("Firebase Authentication is not ready. Reload the page and try again.", "error");
+    return;
+  }
+  authActionInProgress = true;
+  setAuthBusy(true);
+  setAuthMessage("Opening Google sign-in…");
+  const provider = new window.firebase.auth.GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: "select_account" });
+  try {
+    const credential = await firebaseAuth.signInWithPopup(provider);
+    showApp(credential.user);
+  } catch (error) {
+    if (error.code === "auth/popup-blocked" || error.code === "auth/operation-not-supported-in-this-environment") {
+      try {
+        setAuthMessage("Redirecting to Google sign-in…");
+        await firebaseAuth.signInWithRedirect(provider);
+        return;
+      } catch (redirectError) {
+        setAuthMessage(getAuthErrorMessage(redirectError), "error");
+      }
+    } else {
+      setAuthMessage(getAuthErrorMessage(error), "error");
+    }
+  } finally {
+    authActionInProgress = false;
+    setAuthBusy(false);
   }
 });
 
@@ -2168,14 +2209,16 @@ document.querySelector("#sign-out").addEventListener("click", async () => {
     showAuthScreen();
     return;
   }
-  if (!supabaseClient) {
+  if (!firebaseAuth) {
     showAuthScreen();
     return;
   }
-  const { error } = await supabaseClient.auth.signOut();
-  if (error) {
+  try {
+    await firebaseAuth.signOut();
+    showAuthScreen();
+  } catch (error) {
     const appMessage = document.querySelector("#app-message");
-    appMessage.textContent = `Could not sign out: ${error.message}`;
+    appMessage.textContent = `Could not sign out: ${getAuthErrorMessage(error)}`;
     appMessage.classList.remove("hidden");
   }
 });
