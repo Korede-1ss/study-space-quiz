@@ -1987,8 +1987,12 @@ function showApp(user, preview = false, previewUsername = "") {
   appShell.classList.remove("hidden");
   document.querySelector("#app-message").classList.add("hidden");
   const username = typeof user?.displayName === "string" ? user.displayName.trim() : "";
+  const providers = new Set((user?.providerData || []).map((provider) => provider.providerId));
+  const providerLabel = providers.has("google.com") ? "Google" : providers.has("password") ? "Email/Password" : "Signed in";
   document.querySelector("#profile-name").textContent = username || user?.email || previewUsername || (preview ? "Local preview" : "My study space");
-  document.querySelector("#profile-status").textContent = preview ? "Progress saved on this device" : "Signed in · progress saved on this device";
+  document.querySelector("#profile-status").textContent = preview
+    ? "Local preview · progress saved on this device"
+    : `${user?.email || providerLabel} · ${providerLabel} · progress saved on this device`;
   document.querySelector("#sign-out").textContent = preview ? "Exit preview" : "Sign out";
   renderDashboard();
   renderLearnPage();
@@ -2053,6 +2057,12 @@ async function initialiseAuth() {
       const isPasswordAccount = user.providerData.some((provider) => provider.providerId === "password");
       if (isPasswordAccount && !user.emailVerified) {
         showAuthScreen("Please verify your email address using the link we sent you, then sign in.");
+        authActionInProgress = true;
+        firebaseAuth.signOut().catch((error) => {
+          showAuthScreen(`Could not close the unverified session: ${getAuthErrorMessage(error)}`);
+        }).finally(() => {
+          authActionInProgress = false;
+        });
         return;
       }
       showApp(user);
@@ -2121,12 +2131,8 @@ authForm.addEventListener("submit", async (event) => {
     } else {
       const credential = await firebaseAuth.signInWithEmailAndPassword(email, password);
       if (!credential.user.emailVerified) {
-        try {
-          await credential.user.sendEmailVerification({ url: getFirebaseContinueUrl() });
-        } finally {
-          await firebaseAuth.signOut();
-        }
-        setAuthMessage("Please verify your email before signing in. We sent another verification link.", "success");
+        await firebaseAuth.signOut();
+        setAuthMessage("Please verify your email using the link sent when you registered, then sign in again.", "error");
       } else {
         showApp(credential.user);
       }

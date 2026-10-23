@@ -1,3 +1,11 @@
 /assets/boostrap-5.3.8-dist/
 /Chemistry Jamb syllabus.pdf
 /Jamb Remix Mathematics by PDF-MADEAZY (Barr_Kolawole).pdf
+/functions/node_modules/
+**/*service-account*.json
+**/*serviceAccount*.json
+**/*firebase-adminsdk*.json
+/.credentials/
+/.runtimeconfig.json
+/.env
+/.env.*
